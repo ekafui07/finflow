@@ -16,7 +16,7 @@ import {
 import { subMonths, format, isSameMonth, parseISO } from 'date-fns';
 
 const SavingsInsightCard = () => {
-  const { transactions, goals } = useApp();
+  const { transactions, goals, user } = useApp();
   const now = new Date();
 
   // Calculate savings for last 3 months
@@ -71,11 +71,11 @@ const SavingsInsightCard = () => {
       <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="p-4 bg-slate-50 rounded-2xl">
           <p className="text-xs font-bold text-slate-500 uppercase mb-1">This Month</p>
-          <p className="text-xl font-bold text-slate-900">{formatCurrency(currentSavings)}</p>
+          <p className="text-xl font-bold text-slate-900">{formatCurrency(currentSavings, user?.currency || 'USD')}</p>
         </div>
         <div className="p-4 bg-slate-50 rounded-2xl">
           <p className="text-xs font-bold text-slate-500 uppercase mb-1">Projected Yearly</p>
-          <p className="text-xl font-bold text-slate-900">{formatCurrency(projectedYearlySavings)}</p>
+          <p className="text-xl font-bold text-slate-900">{formatCurrency(projectedYearlySavings, user?.currency || 'USD')}</p>
         </div>
       </div>
 
@@ -91,7 +91,13 @@ const SavingsInsightCard = () => {
             />
             <Tooltip 
               cursor={{ fill: 'transparent' }}
-              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              contentStyle={{ 
+                backgroundColor: '#fff', 
+                borderRadius: '12px', 
+                border: 'none', 
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                color: '#0f172a'
+              }}
             />
             <Bar dataKey="savings" radius={[4, 4, 0, 0]}>
               {savingsData.map((entry, index) => (
@@ -109,7 +115,7 @@ const SavingsInsightCard = () => {
             Smart Tip
           </div>
           <p className="text-sm text-amber-800 leading-relaxed">
-            Reduce coffee spending by <span className="font-bold">GHS 20/month</span> and hit your <span className="font-bold">{targetGoal.name}</span> goal <span className="font-bold">1 week early</span>.
+            Reduce coffee spending by <span className="font-bold">{user?.currency || 'GHS'} 20/month</span> and hit your <span className="font-bold">{targetGoal.name}</span> goal <span className="font-bold">1 week early</span>.
           </p>
         </div>
       )}

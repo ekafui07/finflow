@@ -18,25 +18,17 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 antialiased font-sans;
-  }
-  
-  .dark body {
-    @apply bg-slate-950 text-slate-50;
+    @apply bg-slate-50 text-slate-900 antialiased font-sans transition-colors duration-300;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm rounded-2xl;
-  }
-  
-  .dark .glass-card {
-    @apply bg-slate-900/80 border-slate-800/50;
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm rounded-2xl transition-all duration-300;
   }
   
   .btn-primary {
-    @apply bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl transition-all active:scale-95 font-medium flex items-center justify-center gap-2;
+    @apply bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl transition-all active:scale-95 font-medium flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20;
   }
   
   .btn-secondary {

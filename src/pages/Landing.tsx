@@ -12,12 +12,10 @@ const Landing = () => {
           <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-200">
             <Wallet size={24} />
           </div>
-          <span className="text-2xl font-bold tracking-tight text-slate-900">FinFlow</span>
+          <span className="text-2xl font-bold tracking-tight text-slate-900">UniWallet</span>
         </div>
         <div className="hidden md:flex items-center gap-8">
           <a href="#features" className="text-sm font-semibold text-slate-600 hover:text-brand-600 transition-colors">Features</a>
-          <a href="#pricing" className="text-sm font-semibold text-slate-600 hover:text-brand-600 transition-colors">Pricing</a>
-          <a href="#about" className="text-sm font-semibold text-slate-600 hover:text-brand-600 transition-colors">About</a>
         </div>
         <div className="flex items-center gap-4">
           <Link to="/auth" className="text-sm font-bold text-slate-600 hover:text-slate-900">Log in</Link>
@@ -33,23 +31,20 @@ const Landing = () => {
           transition={{ duration: 0.6 }}
         >
           <span className="inline-block px-4 py-1.5 bg-brand-50 text-brand-600 rounded-full text-sm font-bold mb-6">
-            New: AI-Powered Insights ✨
+                Powerful Financial Insights ✨
           </span>
           <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-tight mb-8">
             Master your money with <br />
             <span className="text-brand-600">effortless clarity.</span>
           </h1>
           <p className="max-w-2xl mx-auto text-xl text-slate-500 mb-12 leading-relaxed">
-            FinFlow helps you track spending, set budgets, and reach your savings goals with a premium, intuitive dashboard designed for modern life.
+            UniWallet helps you track spending, set budgets, and reach your savings goals with a premium, intuitive dashboard designed for modern life.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to="/auth" className="btn-primary px-10 py-4 text-lg shadow-xl shadow-brand-200">
-              Start Free Trial
+              Get Started Now
               <ArrowRight size={20} />
             </Link>
-            <button className="btn-secondary px-10 py-4 text-lg">
-              View Demo
-            </button>
           </div>
         </motion.div>
 
@@ -138,10 +133,9 @@ const Landing = () => {
         <div className="bg-slate-900 rounded-[32px] p-12 md:p-20 text-center text-white relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-brand-500/20 via-transparent to-transparent"></div>
           <h2 className="text-4xl md:text-5xl font-bold mb-8 relative z-10">Ready to take control?</h2>
-          <p className="text-slate-400 max-w-xl mx-auto mb-12 text-lg relative z-10">Join thousands of others who are building a better financial future with FinFlow.</p>
+          <p className="text-slate-400 max-w-xl mx-auto mb-12 text-lg relative z-10">Join thousands of others who are building a better financial future with UniWallet.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 relative z-10">
-            <Link to="/auth" className="btn-primary px-10 py-4 text-lg w-full sm:w-auto">Get Started Now</Link>
-            <button className="px-10 py-4 text-lg font-bold hover:text-brand-400 transition-colors">Contact Sales</button>
+            <Link to="/auth" className="btn-primary px-10 py-4 text-lg w-full sm:w-auto">Join UniWallet Now</Link>
           </div>
         </div>
       </section>
@@ -153,9 +147,9 @@ const Landing = () => {
             <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white">
               <Wallet size={18} />
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">FinFlow</span>
+            <span className="text-xl font-bold tracking-tight text-slate-900">UniWallet</span>
           </div>
-          <p className="text-slate-500 text-sm">© 2026 FinFlow Inc. All rights reserved.</p>
+          <p className="text-slate-500 text-sm">© 2026 UniWallet Inc. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <a href="#" className="text-slate-400 hover:text-slate-900 transition-colors">Twitter</a>
             <a href="#" className="text-slate-400 hover:text-slate-900 transition-colors">LinkedIn</a>

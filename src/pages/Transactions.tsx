@@ -13,19 +13,20 @@ import {
   Trash2
 } from 'lucide-react';
 import { useApp } from '../AppContext';
-import { formatCurrency, cn } from '../lib/utils';
+import { formatCurrency, cn, exportToCSV } from '../lib/utils';
 import { Category, Transaction } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
 
 const Transactions = () => {
-  const { transactions, addTransaction, deleteTransaction } = useApp();
+  const { transactions, addTransaction, deleteTransaction, user, isLoading } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<Category | 'all'>('all');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newTransaction, setNewTransaction] = useState<Omit<Transaction, 'id'>>({
     description: '',
     amount: 0,
@@ -34,6 +35,14 @@ const Transactions = () => {
     type: 'expense',
     isRecurring: false
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   const filteredTransactions = transactions.filter(t => {
     const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -56,19 +65,25 @@ const Transactions = () => {
     'all', 'food', 'transport', 'rent', 'utilities', 'entertainment', 'health', 'subscriptions', 'savings', 'others'
   ];
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTransaction.description || newTransaction.amount <= 0) return;
-    addTransaction(newTransaction);
-    setIsModalOpen(false);
-    setNewTransaction({
-      description: '',
-      amount: 0,
-      category: 'food',
-      date: new Date().toISOString().split('T')[0],
-      type: 'expense',
-      isRecurring: false
-    });
+    
+    setIsSubmitting(true);
+    try {
+      await addTransaction(newTransaction);
+      setIsModalOpen(false);
+      setNewTransaction({
+        description: '',
+        amount: 0,
+        category: 'food',
+        date: new Date().toISOString().split('T')[0],
+        type: 'expense',
+        isRecurring: false
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -79,7 +94,10 @@ const Transactions = () => {
           <p className="text-slate-500">View and manage your financial history.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="btn-secondary">
+          <button 
+            onClick={() => exportToCSV(filteredTransactions, 'finflow-transactions.csv')}
+            className="btn-secondary"
+          >
             <Download size={18} />
             Export
           </button>
@@ -206,7 +224,7 @@ const Transactions = () => {
                       "text-sm font-bold",
                       t.type === 'income' ? "text-emerald-600" : "text-slate-900"
                     )}>
-                      {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                      {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount, user?.currency || 'USD')}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -332,9 +350,10 @@ const Transactions = () => {
                   </button>
                   <button 
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all disabled:opacity-50"
                   >
-                    Save
+                    {isSubmitting ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </form>

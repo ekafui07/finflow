@@ -68,6 +68,142 @@ const Learning = () => {
         ))}
       </div>
 
+      <section className="mt-16">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600">
+            <Tag size={24} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Sample Student Portfolios (Ghana)</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            {
+              name: 'The Conservative Starter',
+              desc: 'Focus on safety and liquidity. Best for short-term savings.',
+              allocation: [
+                { label: 'Treasury Bills', value: 80, color: '#0e91e9' },
+                { label: 'MoMo Savings', value: 20, color: '#10b981' }
+              ],
+              risk: 'Low'
+            },
+            {
+              name: 'The Balanced Builder',
+              desc: 'Mix of safety and growth. Good for 1-2 year goals.',
+              allocation: [
+                { label: 'T-Bills', value: 50, color: '#0e91e9' },
+                { label: 'Mutual Funds', value: 40, color: '#f59e0b' },
+                { label: 'Stocks', value: 10, color: '#ef4444' }
+              ],
+              risk: 'Medium'
+            },
+            {
+              name: 'The Aggressive Grower',
+              desc: 'Maximum growth for long-term wealth (3+ years).',
+              allocation: [
+                { label: 'Equity Funds', value: 60, color: '#f59e0b' },
+                { label: 'Stocks', value: 30, color: '#ef4444' },
+                { label: 'T-Bills', value: 10, color: '#0e91e9' }
+              ],
+              risk: 'High'
+            }
+          ].map((portfolio, i) => (
+            <div key={i} className="glass-card p-6 border-slate-100 hover:border-brand-200 transition-colors">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-bold text-slate-900">{portfolio.name}</h4>
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                  portfolio.risk === 'Low' ? "bg-emerald-50 text-emerald-600" :
+                  portfolio.risk === 'Medium' ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
+                )}>
+                  {portfolio.risk} Risk
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mb-6">{portfolio.desc}</p>
+              
+              <div className="space-y-4">
+                {portfolio.allocation.map((item, j) => (
+                  <div key={j} className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+                      <span>{item.label}</span>
+                      <span>{item.value}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${item.value}%` }}
+                        transition={{ delay: 0.5 + (i * 0.1) + (j * 0.1), duration: 1 }}
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-16">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+            <Tag size={24} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Student Discounts & Perks</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            {
+              brand: 'Spotify',
+              discount: '50% OFF',
+              category: 'Entertainment',
+              desc: 'Premium for Students with Hulu & SHOWTIME.',
+              color: 'bg-emerald-50 text-emerald-600'
+            },
+            {
+              brand: 'Apple',
+              discount: 'Save up to GHS 1,000',
+              category: 'Tech',
+              desc: 'Education pricing on Mac and iPad.',
+              color: 'bg-slate-900 text-white'
+            },
+            {
+              brand: 'Amazon Prime',
+              discount: '6 Months Free',
+              category: 'Shopping',
+              desc: 'Then 50% off. Fast shipping & Prime Video.',
+              color: 'bg-brand-50 text-brand-600'
+            },
+            {
+              brand: 'Adobe',
+              discount: '60% OFF',
+              category: 'Creative',
+              desc: 'Creative Cloud All Apps for students.',
+              color: 'bg-rose-50 text-rose-600'
+            }
+          ].map((perk, i) => (
+            <div key={i} className="glass-card p-6 border-slate-100 hover:border-brand-200 transition-all group">
+              <div className={cn("w-full h-12 rounded-xl flex items-center justify-center font-black text-lg mb-4", perk.color)}>
+                {perk.brand}
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{perk.category}</span>
+                  <span className="text-xs font-bold text-brand-600">{perk.discount}</span>
+                </div>
+                <p className="text-sm font-bold text-slate-900">{perk.brand} Student</p>
+                <p className="text-xs text-slate-500 leading-relaxed">{perk.desc}</p>
+              </div>
+              <button className="w-full mt-4 py-2 bg-slate-50 hover:bg-brand-600 hover:text-white rounded-lg text-xs font-bold text-slate-600 transition-all">
+                Claim Discount
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <AnimatePresence>
         {selectedArticle && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">

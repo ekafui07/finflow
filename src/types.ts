@@ -9,6 +9,7 @@ export type Category =
   | 'health' 
   | 'subscriptions' 
   | 'savings' 
+  | 'investment'
   | 'others'
   | 'income';
 
@@ -56,5 +57,26 @@ export interface UserProfile {
   incomeFrequency: 'weekly' | 'bi-weekly' | 'monthly';
   monthlyIncome: number;
   financialGoals: string[];
-  theme: 'light' | 'dark';
+  onboardingComplete?: boolean;
+}
+
+export type NotificationType = 'bill' | 'budget' | 'goal' | 'system' | 'insight';
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  date: string;
+  isRead: boolean;
+  link?: string;
+}
+
+export interface SearchResult {
+  id: string;
+  title: string;
+  subtitle: string;
+  type: 'transaction' | 'budget' | 'goal' | 'bill' | 'article';
+  link: string;
+  amount?: number;
 }

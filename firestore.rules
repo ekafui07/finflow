@@ -55,11 +55,21 @@ service cloud.firestore {
              data.isPaid is bool;
     }
 
+    // Notification validation
+    function isValidNotification(data) {
+      return data.keys().hasAll(['title', 'message', 'type', 'date', 'isRead']) &&
+             data.title is string &&
+             data.message is string &&
+             data.type in ['bill', 'budget', 'goal', 'system', 'insight'] &&
+             data.date is string &&
+             data.isRead is bool;
+    }
+
     // Match users collection
     match /users/{userId} {
       
-      // Profile document
-      match /profile {
+      // Profile subcollection
+      match /profile/{docId} {
         allow read: if isOwner(userId);
         allow write: if isOwner(userId) && isValidProfile(request.resource.data);
       }
@@ -96,6 +106,13 @@ service cloud.firestore {
       match /alerts/{alertId} {
         allow read: if isOwner(userId);
         allow write: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      // Notifications subcollection
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidNotification(request.resource.data);
         allow delete: if isOwner(userId);
       }
     }

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Transaction, Budget, SavingsGoal, UserProfile, Bill } from './types';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Transaction, Budget, SavingsGoal, UserProfile, Bill, AppNotification } from './types';
 import { auth, db } from './config/firebase';
+import { isAfter, parseISO, addDays, isBefore, isSameMonth } from 'date-fns';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
@@ -11,7 +12,6 @@ import {
 import { 
   doc, 
   setDoc, 
-  getDoc, 
   collection, 
   onSnapshot, 
   addDoc, 
@@ -22,6 +22,7 @@ import {
   writeBatch,
   getDocFromServer
 } from 'firebase/firestore';
+import toast from 'react-hot-toast';
 
 interface AppContextType {
   user: UserProfile | null;
@@ -29,10 +30,11 @@ interface AppContextType {
   budgets: Budget[];
   goals: SavingsGoal[];
   bills: Bill[];
+  notifications: AppNotification[];
   isLoading: boolean;
   hasCompletedOnboarding: boolean;
   dismissedAlerts: string[];
-  login: (email: string, password?: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   addTransaction: (t: Omit<Transaction, 'id'>) => Promise<void>;
@@ -49,6 +51,8 @@ interface AppContextType {
   applyBudgetTemplate: (template: Omit<Budget, 'id'>[]) => Promise<void>;
   completeOnboarding: () => Promise<void>;
   dismissAlert: (id: string) => Promise<void>;
+  updateProfile: (updated: Partial<UserProfile>) => Promise<void>;
+  markNotificationAsRead: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -59,10 +63,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+
+  const handleFirestoreError = useCallback((error: any, operation: string, path: string) => {
+    const errInfo = {
+      error: error.message,
+      operationType: operation,
+      path,
+      authInfo: {
+        userId: auth.currentUser?.uid,
+        email: auth.currentUser?.email,
+      }
+    };
+    console.error('Firestore Error:', JSON.stringify(errInfo));
+    toast.error(`Error during ${operation}: ${error.message}`);
+  }, []);
 
   // Connection test
   useEffect(() => {
@@ -70,7 +89,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         await getDocFromServer(doc(db, '_connection_test_', 'ping'));
       } catch (error) {
-        if (error instanceof Error && error.message.includes('the client is offline')) {
+        if (error instanceof Error && error.message.includes('the client client is offline')) {
           console.error("Firebase is offline. Check your configuration or internet connection.");
         }
       }
@@ -87,6 +106,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setBudgets([]);
         setGoals([]);
         setBills([]);
+        setNotifications([]);
         setHasCompletedOnboarding(false);
         setDismissedAlerts([]);
         setIsLoading(false);
@@ -109,7 +129,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setUser(data);
         setHasCompletedOnboarding(data.onboardingComplete || false);
       } else {
-        // Initialize profile if it doesn't exist
         const initialProfile: UserProfile = {
           name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
           email: firebaseUser.email || '',
@@ -117,7 +136,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           incomeFrequency: 'monthly',
           monthlyIncome: 1000,
           financialGoals: [],
-          theme: 'light',
           onboardingComplete: false
         };
         setDoc(doc(db, 'users', userId, 'profile', 'data'), initialProfile);
@@ -147,6 +165,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setBills(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Bill)));
     }, (error) => handleFirestoreError(error, 'list', `users/${userId}/bills`));
 
+    // Listen to Notifications
+    const unsubNotifications = onSnapshot(
+      query(collection(db, 'users', userId, 'notifications'), orderBy('date', 'desc')),
+      (snapshot) => {
+        setNotifications(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification)));
+      }, (error) => handleFirestoreError(error, 'list', `users/${userId}/notifications`)
+    );
+
     // Listen to Dismissed Alerts
     const unsubAlerts = onSnapshot(collection(db, 'users', userId, 'alerts'), (snapshot) => {
       setDismissedAlerts(snapshot.docs.map(d => d.id));
@@ -159,46 +185,145 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubBudgets();
       unsubGoals();
       unsubBills();
+      unsubNotifications();
       unsubAlerts();
     };
-  }, [firebaseUser]);
+  }, [firebaseUser, handleFirestoreError]);
 
-  const handleFirestoreError = (error: any, operation: string, path: string) => {
-    const errInfo = {
-      error: error.message,
-      operationType: operation,
-      path,
-      authInfo: {
-        userId: auth.currentUser?.uid,
-        email: auth.currentUser?.email,
+  // Smart Notification Generator
+  useEffect(() => {
+    if (!firebaseUser || isLoading) return;
+    const userId = firebaseUser.uid;
+
+    const generateNotifications = async () => {
+      const newNotifications: Omit<AppNotification, 'id'>[] = [];
+
+      // 1. Bill Reminders (Due within 3 days)
+      bills.forEach(bill => {
+        if (!bill.isPaid) {
+          const dueDate = parseISO(bill.dueDate);
+          const threeDaysFromNow = addDays(new Date(), 3);
+          if (isBefore(dueDate, threeDaysFromNow)) {
+            const exists = notifications.some(n => n.type === 'bill' && n.message.includes(bill.name));
+            if (!exists) {
+              newNotifications.push({
+                title: 'Bill Reminder',
+                message: `Your ${bill.name} bill (${bill.amount}) is due on ${bill.dueDate}.`,
+                type: 'bill',
+                date: new Date().toISOString(),
+                isRead: false,
+                link: '/transactions'
+              });
+            }
+          }
+        }
+      });
+
+      // 2. Budget Alerts (Over 80% spent)
+      budgets.forEach(budget => {
+        const percent = (budget.spent / budget.limit) * 100;
+        if (percent >= 80) {
+          const exists = notifications.some(n => n.type === 'budget' && n.message.includes(budget.category));
+          if (!exists) {
+            newNotifications.push({
+              title: 'Budget Alert',
+              message: `You've spent ${Math.round(percent)}% of your ${budget.category} budget.`,
+              type: 'budget',
+              date: new Date().toISOString(),
+              isRead: false,
+              link: '/budgets'
+            });
+          }
+        }
+      });
+
+      // 3. Goal Milestones (Over 50% or 90%)
+      goals.forEach(goal => {
+        const percent = (goal.currentAmount / goal.targetAmount) * 100;
+        if (percent >= 50) {
+          const exists = notifications.some(n => n.type === 'goal' && n.message.includes(goal.name));
+          if (!exists) {
+            newNotifications.push({
+              title: 'Goal Milestone!',
+              message: `You're ${Math.round(percent)}% of the way to your ${goal.name} goal!`,
+              type: 'goal',
+              date: new Date().toISOString(),
+              isRead: false,
+              link: '/budgets'
+            });
+          }
+        }
+      });
+
+      if (newNotifications.length > 0) {
+        const batch = writeBatch(db);
+        newNotifications.forEach(n => {
+          const newDoc = doc(collection(db, 'users', userId, 'notifications'));
+          batch.set(newDoc, n);
+        });
+        await batch.commit();
       }
     };
-    console.error('Firestore Error:', JSON.stringify(errInfo));
-    // You could show a toast here
+
+    generateNotifications();
+  }, [firebaseUser, bills, budgets, goals, isLoading]);
+
+  const markNotificationAsRead = async (id: string) => {
+    if (!firebaseUser) return;
+    try {
+      await updateDoc(doc(db, 'users', firebaseUser.uid, 'notifications', id), { isRead: true });
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${firebaseUser.uid}/notifications/${id}`);
+    }
   };
 
-  const login = async (email: string, password?: string) => {
-    // For demo purposes, we might use a default password if not provided
-    await signInWithEmailAndPassword(auth, email, password || 'password123');
+  const login = async (email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast.success('Successfully logged in!');
+    } catch (error: any) {
+      toast.error(error.message);
+      throw error;
+    }
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    const { user: u } = await createUserWithEmailAndPassword(auth, email, password);
-    const initialProfile: UserProfile = {
-      name,
-      email,
-      currency: 'GHS',
-      incomeFrequency: 'monthly',
-      monthlyIncome: 1000,
-      financialGoals: [],
-      theme: 'light',
-      onboardingComplete: false
-    };
-    await setDoc(doc(db, 'users', u.uid, 'profile', 'data'), initialProfile);
+    try {
+      const { user: u } = await createUserWithEmailAndPassword(auth, email, password);
+      const initialProfile: UserProfile = {
+        name,
+        email,
+        currency: 'GHS',
+        incomeFrequency: 'monthly',
+        monthlyIncome: 1000,
+        financialGoals: [],
+        onboardingComplete: false
+      };
+      await setDoc(doc(db, 'users', u.uid, 'profile', 'data'), initialProfile);
+      toast.success('Account created successfully!');
+    } catch (error: any) {
+      toast.error(error.message);
+      throw error;
+    }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+      toast.success('Logged out successfully');
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const updateProfile = async (updated: Partial<UserProfile>) => {
+    if (!firebaseUser) return;
+    try {
+      await updateDoc(doc(db, 'users', firebaseUser.uid, 'profile', 'data'), updated);
+      toast.success('Profile updated!');
+    } catch (error: any) {
+      handleFirestoreError(error, 'update', `users/${firebaseUser.uid}/profile/data`);
+    }
   };
 
   const addTransaction = async (t: Omit<Transaction, 'id'>) => {
@@ -208,7 +333,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await addDoc(collection(db, 'users', userId, 'transactions'), t);
       
-      // Update budget spent amount if it's an expense
       if (t.type === 'expense') {
         const budget = budgets.find(b => b.category === t.category);
         if (budget) {
@@ -217,6 +341,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
         }
       }
+      toast.success('Transaction added!');
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${userId}/transactions`);
     }
@@ -238,6 +363,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
         }
       }
+      toast.success('Transaction deleted');
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${userId}/transactions/${id}`);
     }
@@ -252,25 +378,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await updateDoc(doc(db, 'users', userId, 'transactions', id), updated);
 
-      // Handle budget updates if amount or category changed
-      if (old.type === 'expense' || updated.type === 'expense') {
-        const current = { ...old, ...updated };
-        
-        // This is a bit complex for a simple update, but necessary for consistency
-        // In a real app, you might use a Cloud Function to keep these in sync
-        for (const b of budgets) {
-          let newSpent = b.spent;
-          if (old.type === 'expense' && b.category === old.category) {
-            newSpent -= old.amount;
+      const current = { ...old, ...updated };
+      
+      // If amount, category, or type changed, we need to update budgets
+      if (old.amount !== current.amount || old.category !== current.category || old.type !== current.type) {
+        // 1. Revert old transaction's impact on budget
+        if (old.type === 'expense') {
+          const oldBudget = budgets.find(b => b.category === old.category);
+          if (oldBudget) {
+            await updateDoc(doc(db, 'users', userId, 'budgets', oldBudget.id), {
+              spent: Math.max(0, oldBudget.spent - old.amount)
+            });
           }
-          if (current.type === 'expense' && b.category === current.category) {
-            newSpent += current.amount;
-          }
-          if (newSpent !== b.spent) {
-            await updateDoc(doc(db, 'users', userId, 'budgets', b.id), { spent: Math.max(0, newSpent) });
+        }
+
+        // 2. Apply new transaction's impact on budget
+        if (current.type === 'expense') {
+          // We need to fetch the LATEST budget state because the previous updateDoc might have changed it
+          // However, since we are in a listener, 'budgets' state might be stale if multiple updates happen fast.
+          // For simplicity in this prototype, we'll use the current state, but a transaction/batch would be better.
+          const newBudget = budgets.find(b => b.category === current.category);
+          if (newBudget) {
+            // If it's the same budget, we need to account for the reversion we just did
+            const adjustedSpent = (old.type === 'expense' && old.category === current.category) 
+              ? Math.max(0, newBudget.spent - old.amount) 
+              : newBudget.spent;
+            
+            await updateDoc(doc(db, 'users', userId, 'budgets', newBudget.id), {
+              spent: adjustedSpent + current.amount
+            });
           }
         }
       }
+      toast.success('Transaction updated');
     } catch (error) {
       handleFirestoreError(error, 'update', `users/${userId}/transactions/${id}`);
     }
@@ -278,37 +418,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addBudget = async (b: Omit<Budget, 'id'>) => {
     if (!firebaseUser) return;
-    await addDoc(collection(db, 'users', firebaseUser.uid, 'budgets'), b);
+    try {
+      await addDoc(collection(db, 'users', firebaseUser.uid, 'budgets'), b);
+      toast.success('Budget created!');
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${firebaseUser.uid}/budgets`);
+    }
   };
 
   const deleteBudget = async (id: string) => {
     if (!firebaseUser) return;
-    await deleteDoc(doc(db, 'users', firebaseUser.uid, 'budgets', id));
+    try {
+      await deleteDoc(doc(db, 'users', firebaseUser.uid, 'budgets', id));
+      toast.success('Budget deleted');
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${firebaseUser.uid}/budgets/${id}`);
+    }
   };
 
   const updateBudget = async (id: string, updated: Partial<Budget>) => {
     if (!firebaseUser) return;
-    await updateDoc(doc(db, 'users', firebaseUser.uid, 'budgets', id), updated);
+    try {
+      await updateDoc(doc(db, 'users', firebaseUser.uid, 'budgets', id), updated);
+      toast.success('Budget updated');
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${firebaseUser.uid}/budgets/${id}`);
+    }
   };
 
   const addGoal = async (g: Omit<SavingsGoal, 'id'>) => {
     if (!firebaseUser) return;
-    await addDoc(collection(db, 'users', firebaseUser.uid, 'goals'), g);
+    try {
+      await addDoc(collection(db, 'users', firebaseUser.uid, 'goals'), g);
+      toast.success('Goal added!');
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${firebaseUser.uid}/goals`);
+    }
   };
 
   const updateGoal = async (id: string, updated: Partial<SavingsGoal>) => {
     if (!firebaseUser) return;
-    await updateDoc(doc(db, 'users', firebaseUser.uid, 'goals', id), updated);
+    try {
+      await updateDoc(doc(db, 'users', firebaseUser.uid, 'goals', id), updated);
+      toast.success('Goal updated');
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${firebaseUser.uid}/goals/${id}`);
+    }
   };
 
   const deleteGoal = async (id: string) => {
     if (!firebaseUser) return;
-    await deleteDoc(doc(db, 'users', firebaseUser.uid, 'goals', id));
+    try {
+      await deleteDoc(doc(db, 'users', firebaseUser.uid, 'goals', id));
+      toast.success('Goal deleted');
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${firebaseUser.uid}/goals/${id}`);
+    }
   };
 
   const addBill = async (b: Omit<Bill, 'id'>) => {
     if (!firebaseUser) return;
-    await addDoc(collection(db, 'users', firebaseUser.uid, 'bills'), b);
+    try {
+      await addDoc(collection(db, 'users', firebaseUser.uid, 'bills'), b);
+      toast.success('Bill added!');
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${firebaseUser.uid}/bills`);
+    }
   };
 
   const toggleBillPaid = async (id: string) => {
@@ -316,51 +491,70 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const bill = bills.find(b => b.id === id);
     if (!bill) return;
 
-    const newIsPaid = !bill.isPaid;
-    await updateDoc(doc(db, 'users', firebaseUser.uid, 'bills', id), { isPaid: newIsPaid });
+    try {
+      const newIsPaid = !bill.isPaid;
+      await updateDoc(doc(db, 'users', firebaseUser.uid, 'bills', id), { isPaid: newIsPaid });
 
-    if (newIsPaid) {
-      await addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        amount: bill.amount,
-        category: bill.category,
-        description: `Bill Payment: ${bill.name}`,
-        type: 'expense'
-      });
+      if (newIsPaid) {
+        await addTransaction({
+          date: new Date().toISOString().split('T')[0],
+          amount: bill.amount,
+          category: bill.category,
+          description: `Bill Payment: ${bill.name}`,
+          type: 'expense'
+        });
+      }
+      toast.success(newIsPaid ? 'Bill marked as paid' : 'Bill marked as unpaid');
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${firebaseUser.uid}/bills/${id}`);
     }
   };
 
   const applyBudgetTemplate = async (template: Omit<Budget, 'id'>[]) => {
     if (!firebaseUser) return;
     const userId = firebaseUser.uid;
-    const batch = writeBatch(db);
-    
-    template.forEach(b => {
-      const newDoc = doc(collection(db, 'users', userId, 'budgets'));
-      batch.set(newDoc, b);
-    });
-    
-    batch.update(doc(db, 'users', userId, 'profile', 'data'), { onboardingComplete: true });
-    await batch.commit();
+    try {
+      const batch = writeBatch(db);
+      
+      template.forEach(b => {
+        const newDoc = doc(collection(db, 'users', userId, 'budgets'));
+        batch.set(newDoc, b);
+      });
+      
+      batch.update(doc(db, 'users', userId, 'profile', 'data'), { onboardingComplete: true });
+      await batch.commit();
+      toast.success('Budget template applied!');
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${userId}/budgets`);
+    }
   };
 
   const completeOnboarding = async () => {
     if (!firebaseUser) return;
-    await updateDoc(doc(db, 'users', firebaseUser.uid, 'profile', 'data'), { onboardingComplete: true });
+    try {
+      await updateDoc(doc(db, 'users', firebaseUser.uid, 'profile', 'data'), { onboardingComplete: true });
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${firebaseUser.uid}/profile/data`);
+    }
   };
 
   const dismissAlert = async (id: string) => {
     if (!firebaseUser) return;
-    await setDoc(doc(db, 'users', firebaseUser.uid, 'alerts', id), { dismissedAt: new Date().toISOString() });
+    try {
+      await setDoc(doc(db, 'users', firebaseUser.uid, 'alerts', id), { dismissedAt: new Date().toISOString() });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${firebaseUser.uid}/alerts/${id}`);
+    }
   };
 
   return (
     <AppContext.Provider value={{
-      user, transactions, budgets, goals, bills, isLoading,
+      user, transactions, budgets, goals, bills, notifications, isLoading,
       hasCompletedOnboarding, dismissedAlerts,
       login, signup, logout, addTransaction, deleteTransaction, updateTransaction,
       addBudget, deleteBudget, updateBudget, addGoal, updateGoal, deleteGoal,
-      addBill, toggleBillPaid, applyBudgetTemplate, completeOnboarding, dismissAlert
+      addBill, toggleBillPaid, applyBudgetTemplate, completeOnboarding, dismissAlert,
+      updateProfile, markNotificationAsRead
     }}>
       {children}
     </AppContext.Provider>

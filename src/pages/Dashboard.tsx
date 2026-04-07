@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 import BillReminders from '../components/BillReminders';
 import SavingsInsightCard from '../components/SavingsInsightCard';
+import SplitBillCalculator from '../components/SplitBillCalculator';
 import BudgetTemplatesModal from '../components/BudgetTemplatesModal';
 
 import { 
@@ -44,7 +45,15 @@ import {
 } from 'date-fns';
 
 const Dashboard = () => {
-  const { transactions, budgets, user, bills, dismissedAlerts, dismissAlert } = useApp();
+  const { transactions, budgets, user, bills, dismissedAlerts, dismissAlert, isLoading } = useApp();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   // Calculate stats
   const now = new Date();
@@ -109,7 +118,7 @@ const Dashboard = () => {
     alerts.push({
       id: 'alert-subs',
       type: 'subscription',
-      message: `You've spent ${formatCurrency(subSpending)} on subscriptions this month.`,
+      message: `You've spent ${formatCurrency(subSpending, user?.currency || 'USD')} on subscriptions this month.`,
       color: 'bg-indigo-50 text-indigo-700 border-indigo-200'
     });
   }
@@ -183,6 +192,8 @@ const Dashboard = () => {
     { label: 'Savings Rate', value: formatPercent(savingsRate), icon: PiggyBank, color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
 
+  const formatWithUserCurrency = (val: number) => formatCurrency(val, user?.currency || 'USD');
+
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
       <BudgetTemplatesModal />
@@ -202,7 +213,12 @@ const Dashboard = () => {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className={cn("px-4 py-2 rounded-xl border text-sm font-medium flex items-center gap-3 shadow-sm", alert.color)}
+                  className={cn("px-4 py-2 rounded-xl border text-sm font-medium flex items-center gap-3 shadow-sm transition-colors", 
+                    alert.type === 'bill' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                    alert.type === 'budget' ? "bg-rose-50 text-rose-700 border-rose-200" :
+                    alert.type === 'subscription' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                    "bg-orange-50 text-orange-700 border-orange-200"
+                  )}
                 >
                   <AlertCircle size={16} />
                   <span className="flex-1">{alert.message}</span>
@@ -230,14 +246,19 @@ const Dashboard = () => {
             className="glass-card p-6"
           >
             <div className="flex justify-between items-start">
-              <div className={cn("p-3 rounded-xl", stat.bg)}>
+              <div className={cn("p-3 rounded-xl", 
+                stat.label === 'Total Balance' ? "bg-brand-50" :
+                stat.label === 'Monthly Income' ? "bg-emerald-50" :
+                stat.label === 'Monthly Expenses' ? "bg-rose-50" :
+                "bg-amber-50"
+              )}>
                 <stat.icon className={stat.color} size={24} />
               </div>
             </div>
             <div className="mt-4">
               <p className="text-sm font-medium text-slate-500">{stat.label}</p>
               <h3 className="text-2xl font-bold text-slate-900 mt-1">
-                {typeof stat.value === 'number' ? formatCurrency(stat.value) : stat.value}
+                {typeof stat.value === 'number' ? formatWithUserCurrency(stat.value) : stat.value}
               </h3>
             </div>
           </motion.div>
@@ -275,14 +296,15 @@ const Dashboard = () => {
                   axisLine={false} 
                   tickLine={false} 
                   tick={{ fill: '#94a3b8', fontSize: 12 }}
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => formatWithUserCurrency(value)}
                 />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: '#fff', 
                     borderRadius: '12px', 
                     border: 'none', 
-                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                    color: '#0f172a'
                   }} 
                 />
                 <Area 
@@ -328,7 +350,7 @@ const Dashboard = () => {
             </ResponsiveContainer>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
               <p className="text-xs font-medium text-slate-500">Total</p>
-              <p className="text-lg font-bold text-slate-900">{formatCurrency(totalMonthlySpending)}</p>
+              <p className="text-lg font-bold text-slate-900">{formatWithUserCurrency(totalMonthlySpending)}</p>
             </div>
           </div>
           <div className="mt-6 space-y-3">
@@ -338,7 +360,7 @@ const Dashboard = () => {
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
                   <span className="text-sm text-slate-600 font-medium">{item.name}</span>
                 </div>
-                <span className="text-sm font-bold text-slate-900">${item.value}</span>
+                <span className="text-sm font-bold text-slate-900">{formatWithUserCurrency(item.value)}</span>
               </div>
             ))}
           </div>
@@ -352,35 +374,41 @@ const Dashboard = () => {
           <BillReminders />
         </div>
       </div>
-      {/* Recent Transactions */}
-      <div className="glass-card p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-slate-900">Recent Transactions</h3>
-          <button className="text-sm font-semibold text-brand-600 hover:text-brand-700">View All</button>
+
+      {/* Split Bill & Recent Transactions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1">
+          <SplitBillCalculator />
         </div>
-        <div className="space-y-4">
-          {transactions.slice(0, 5).map((t) => (
-            <div key={t.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors">
-              <div className="flex items-center gap-4">
-                <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center",
-                  t.type === 'income' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+        <div className="lg:col-span-2 glass-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-slate-900">Recent Transactions</h3>
+            <button className="text-sm font-semibold text-brand-600 hover:text-brand-700">View All</button>
+          </div>
+          <div className="space-y-4">
+            {transactions.slice(0, 5).map((t) => (
+              <div key={t.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    t.type === 'income' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                  )}>
+                    {t.type === 'income' ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">{t.description}</p>
+                    <p className="text-xs text-slate-500">{format(parseISO(t.date), 'MMM dd, yyyy')} • {t.category}</p>
+                  </div>
+                </div>
+                <span className={cn(
+                  "text-sm font-bold",
+                  t.type === 'income' ? "text-emerald-600" : "text-slate-900"
                 )}>
-                  {t.type === 'income' ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">{t.description}</p>
-                  <p className="text-xs text-slate-500">{format(parseISO(t.date), 'MMM dd, yyyy')} • {t.category}</p>
-                </div>
+                  {t.type === 'income' ? '+' : '-'}{formatWithUserCurrency(t.amount)}
+                </span>
               </div>
-              <span className={cn(
-                "text-sm font-bold",
-                t.type === 'income' ? "text-emerald-600" : "text-slate-900"
-              )}>
-                {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-              </span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>

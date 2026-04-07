@@ -1,41 +1,129 @@
-import React from 'react';
-import { User, Bell, Shield, CreditCard, Globe, Moon, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Bell, Shield, CreditCard, Globe, Moon, Trash2, LogOut, Save } from 'lucide-react';
 import { useApp } from '../AppContext';
+import toast from 'react-hot-toast';
 
 const Settings = () => {
-  const { user } = useApp();
+  const { user, updateProfile, logout } = useApp();
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [name, setName] = useState(user?.name || '');
+  const [currency, setCurrency] = useState(user?.currency || 'GHS');
 
-  const sections = [
-    { icon: User, label: 'Profile Information', desc: 'Update your name, email, and avatar.' },
-    { icon: Globe, label: 'Currency & Region', desc: 'Set your preferred currency and time zone.' },
-    { icon: Bell, label: 'Notifications', desc: 'Manage how you receive alerts and updates.' },
-    { icon: Shield, label: 'Security', desc: 'Change password and manage two-factor auth.' },
-    { icon: Moon, label: 'Appearance', desc: 'Toggle between light and dark mode.' },
-    { icon: CreditCard, label: 'Subscription', desc: 'Manage your plan and billing details.' },
-  ];
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateProfile({ name, currency });
+    setIsEditingProfile(false);
+  };
+
+  const handleDeleteAccount = () => {
+    if (window.confirm('Are you sure you want to delete your account? This action is irreversible.')) {
+      toast.error('Account deletion is currently disabled for safety.');
+    }
+  };
 
   return (
     <div className="p-8 space-y-8 max-w-4xl mx-auto">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Settings</h2>
-        <p className="text-slate-500">Manage your account preferences and application settings.</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Settings</h2>
+          <p className="text-slate-500">Manage your account preferences and application settings.</p>
+        </div>
+        <button 
+          onClick={logout}
+          className="flex items-center gap-2 px-4 py-2 text-rose-600 font-bold hover:bg-rose-50 rounded-xl transition-all"
+        >
+          <LogOut size={20} />
+          Sign Out
+        </button>
       </div>
 
       <div className="glass-card divide-y divide-slate-100">
-        {sections.map((section) => (
-          <div key={section.label} className="p-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors cursor-pointer group">
+        {/* Profile Section */}
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
-                <section.icon size={24} />
+              <div className="w-12 h-12 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center">
+                <User size={24} />
               </div>
               <div>
-                <h4 className="text-lg font-bold text-slate-900">{section.label}</h4>
-                <p className="text-sm text-slate-500">{section.desc}</p>
+                <h4 className="text-lg font-bold text-slate-900">Profile Information</h4>
+                <p className="text-sm text-slate-500">Update your name and email.</p>
               </div>
             </div>
-            <button className="text-sm font-bold text-brand-600">Edit</button>
+            <button 
+              onClick={() => setIsEditingProfile(!isEditingProfile)}
+              className="text-sm font-bold text-brand-600"
+            >
+              {isEditingProfile ? 'Cancel' : 'Edit'}
+            </button>
           </div>
-        ))}
+
+          {isEditingProfile ? (
+            <form onSubmit={handleUpdateProfile} className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+              <div className="space-y-1">
+                <label className="text-sm font-bold text-slate-700">Full Name</label>
+                <input 
+                  type="text" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-bold text-slate-700">Email (Read-only)</label>
+                <input 
+                  type="email" 
+                  value={user?.email}
+                  disabled
+                  className="w-full px-4 py-2 bg-slate-100 border border-slate-200 rounded-xl outline-none text-slate-500 cursor-not-allowed"
+                />
+              </div>
+              <div className="md:col-span-2 flex justify-end">
+                <button type="submit" className="btn-primary">
+                  <Save size={18} />
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Name</p>
+                <p className="text-slate-900 font-medium">{user?.name}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email</p>
+                <p className="text-slate-900 font-medium">{user?.email}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Currency Section */}
+        <div className="p-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center">
+              <Globe size={24} />
+            </div>
+            <div>
+              <h4 className="text-lg font-bold text-slate-900">Currency & Region</h4>
+              <p className="text-sm text-slate-500">Set your preferred currency.</p>
+            </div>
+          </div>
+          <select 
+            value={currency}
+            onChange={(e) => {
+              setCurrency(e.target.value);
+              updateProfile({ currency: e.target.value });
+            }}
+            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-bold"
+          >
+            <option value="GHS">GHS (₵)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="GBP">GBP (£)</option>
+          </select>
+        </div>
       </div>
 
       <div className="glass-card p-6 border-rose-100">
@@ -49,7 +137,10 @@ const Settings = () => {
               <p className="text-sm text-slate-500">Permanently remove your account and all financial data.</p>
             </div>
           </div>
-          <button className="px-4 py-2 border border-rose-200 text-rose-600 rounded-xl font-bold hover:bg-rose-50 transition-colors">
+          <button 
+            onClick={handleDeleteAccount}
+            className="px-4 py-2 border border-rose-200 text-rose-600 rounded-xl font-bold hover:bg-rose-50 transition-colors"
+          >
             Delete
           </button>
         </div>

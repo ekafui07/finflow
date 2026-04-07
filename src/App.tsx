@@ -20,7 +20,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const formattedTitle = pageTitle.charAt(0).toUpperCase() + pageTitle.slice(1);
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50 transition-colors duration-300">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header title={formattedTitle} />
@@ -81,9 +81,12 @@ const AppRoutes = () => {
   );
 };
 
+import { Toaster } from 'react-hot-toast';
+
 export default function App() {
   return (
     <AppProvider>
+      <Toaster position="top-right" />
       <Router>
         <AppRoutes />
       </Router>

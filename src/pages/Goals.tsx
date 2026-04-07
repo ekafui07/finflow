@@ -16,9 +16,10 @@ import { differenceInMonths, parseISO } from 'date-fns';
 import { SavingsGoal } from '../types';
 
 const Goals = () => {
-  const { goals, addGoal, updateGoal, deleteGoal } = useApp();
+  const { goals, addGoal, updateGoal, deleteGoal, user, isLoading } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [savingsAmount, setSavingsAmount] = useState(0);
   
@@ -31,17 +32,29 @@ const Goals = () => {
     color: '#3b82f6'
   });
 
-  const handleSave = (e: React.FormEvent) => {
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGoal.name || newGoal.targetAmount <= 0) return;
 
-    if (editingGoal) {
-      updateGoal(editingGoal.id, newGoal);
-    } else {
-      addGoal(newGoal);
+    setIsSubmitting(true);
+    try {
+      if (editingGoal) {
+        await updateGoal(editingGoal.id, newGoal);
+      } else {
+        await addGoal(newGoal);
+      }
+      closeModal();
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    closeModal();
   };
 
   const closeModal = () => {
@@ -70,17 +83,22 @@ const Goals = () => {
     setIsModalOpen(true);
   };
 
-  const handleAddSavings = (e: React.FormEvent) => {
+  const handleAddSavings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingGoal || savingsAmount <= 0) return;
     
-    updateGoal(editingGoal.id, {
-      currentAmount: editingGoal.currentAmount + savingsAmount
-    });
-    
-    setIsSavingsModalOpen(false);
-    setEditingGoal(null);
-    setSavingsAmount(0);
+    setIsSubmitting(true);
+    try {
+      await updateGoal(editingGoal.id, {
+        currentAmount: editingGoal.currentAmount + savingsAmount
+      });
+      
+      setIsSavingsModalOpen(false);
+      setEditingGoal(null);
+      setSavingsAmount(0);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -144,19 +162,19 @@ const Goals = () => {
                       />
                     </div>
                     <div className="flex justify-between text-sm font-medium">
-                      <span className="text-slate-900">{formatCurrency(goal.currentAmount)}</span>
-                      <span className="text-slate-400">{formatCurrency(goal.targetAmount)}</span>
+                      <span className="text-slate-900">{formatCurrency(goal.currentAmount, user?.currency || 'USD')}</span>
+                      <span className="text-slate-400">{formatCurrency(goal.targetAmount, user?.currency || 'USD')}</span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div className="bg-slate-50 p-3 rounded-xl">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Remaining</p>
-                      <p className="text-sm font-bold text-slate-900">{formatCurrency(remaining)}</p>
+                      <p className="text-sm font-bold text-slate-900">{formatCurrency(remaining, user?.currency || 'USD')}</p>
                     </div>
                     <div className="bg-slate-50 p-3 rounded-xl">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Monthly Needed</p>
-                      <p className="text-sm font-bold text-brand-600">{formatCurrency(monthlyNeeded)}</p>
+                      <p className="text-sm font-bold text-brand-600">{formatCurrency(monthlyNeeded, user?.currency || 'USD')}</p>
                     </div>
                   </div>
                 </div>
@@ -288,9 +306,10 @@ const Goals = () => {
                   </button>
                   <button 
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all disabled:opacity-50"
                   >
-                    {editingGoal ? 'Update' : 'Create'}
+                    {isSubmitting ? 'Saving...' : (editingGoal ? 'Update' : 'Create')}
                   </button>
                 </div>
               </form>
@@ -340,9 +359,10 @@ const Goals = () => {
                   </button>
                   <button 
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all disabled:opacity-50"
                   >
-                    Add Savings
+                    {isSubmitting ? 'Adding...' : 'Add Savings'}
                   </button>
                 </div>
               </form>

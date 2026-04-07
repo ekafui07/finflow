@@ -6,7 +6,7 @@ import { useApp } from '../AppContext';
 import { formatCurrency, cn } from '../lib/utils';
 
 const BudgetTemplatesModal = () => {
-  const { hasCompletedOnboarding, applyBudgetTemplate, completeOnboarding } = useApp();
+  const { hasCompletedOnboarding, applyBudgetTemplate, completeOnboarding, user } = useApp();
   const [selectedTemplate, setSelectedTemplate] = React.useState<BudgetTemplate | null>(null);
 
   if (hasCompletedOnboarding) return null;
@@ -42,7 +42,7 @@ const BudgetTemplatesModal = () => {
                   <Sparkles size={28} />
                 </div>
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-slate-900">Welcome to FinFlow!</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold text-slate-900">Welcome to UniWallet!</h2>
                   <p className="text-slate-500">Let's set up your first budget in 60 seconds.</p>
                 </div>
               </div>
@@ -74,7 +74,7 @@ const BudgetTemplatesModal = () => {
                   <h3 className="text-lg font-bold text-slate-900 mb-2">{template.name}</h3>
                   <p className="text-sm text-slate-500 mb-4 leading-relaxed">{template.description}</p>
                   <div className="text-sm font-bold text-brand-600">
-                    Total: {formatCurrency(template.totalAmount)}
+                    Total: {formatCurrency(template.totalAmount, user?.currency || 'USD')}
                   </div>
                 </div>
               ))}
@@ -106,7 +106,7 @@ const BudgetTemplatesModal = () => {
                   {selectedTemplate.budgets.map((b, i) => (
                     <div key={i} className="flex flex-col">
                       <span className="text-xs font-bold text-slate-500 uppercase">{b.category}</span>
-                      <span className="text-lg font-bold text-slate-900">{formatCurrency(b.limit)}</span>
+                      <span className="text-lg font-bold text-slate-900">{formatCurrency(b.limit, user?.currency || 'USD')}</span>
                     </div>
                   ))}
                 </div>

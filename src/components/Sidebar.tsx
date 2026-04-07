@@ -32,13 +32,13 @@ const Sidebar = () => {
   ];
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white transition-colors duration-300">
       <div className="p-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-200">
             <Wallet size={24} />
           </div>
-          <span className="text-xl font-bold tracking-tight text-slate-900">FinFlow</span>
+          <span className="text-xl font-bold tracking-tight text-slate-900">UniWallet</span>
         </div>
         <button onClick={() => setIsOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-600">
           <X size={24} />
@@ -98,7 +98,7 @@ const Sidebar = () => {
       </div>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 h-screen sticky top-0 flex-col">
+      <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 h-screen sticky top-0 flex-col transition-colors duration-300">
         <SidebarContent />
       </aside>
 

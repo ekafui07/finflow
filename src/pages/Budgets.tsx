@@ -15,8 +15,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Budget, Category } from '../types';
 
 const Budgets = () => {
-  const { budgets, applyBudgetTemplate, addBudget, updateBudget, deleteBudget } = useApp();
+  const { budgets, applyBudgetTemplate, addBudget, updateBudget, deleteBudget, user, isLoading } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   
   const [newBudget, setNewBudget] = useState<Omit<Budget, 'id'>>({
@@ -26,21 +27,33 @@ const Budgets = () => {
     period: 'monthly'
   });
 
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   const categories: Category[] = [
     'food', 'transport', 'rent', 'utilities', 'entertainment', 'health', 'subscriptions', 'savings', 'others'
   ];
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newBudget.limit <= 0) return;
 
-    if (editingBudget) {
-      updateBudget(editingBudget.id, newBudget);
-    } else {
-      addBudget(newBudget);
+    setIsSubmitting(true);
+    try {
+      if (editingBudget) {
+        await updateBudget(editingBudget.id, newBudget);
+      } else {
+        await addBudget(newBudget);
+      }
+      closeModal();
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    closeModal();
   };
 
   const closeModal = () => {
@@ -138,19 +151,19 @@ const Budgets = () => {
         <div className="glass-card p-6 border-l-4 border-brand-500">
           <p className="text-sm font-medium text-slate-500">Total Budgeted</p>
           <h3 className="text-2xl font-bold text-slate-900 mt-1">
-            {formatCurrency(budgets.reduce((acc, b) => acc + b.limit, 0))}
+            {formatCurrency(budgets.reduce((acc, b) => acc + b.limit, 0), user?.currency || 'USD')}
           </h3>
         </div>
         <div className="glass-card p-6 border-l-4 border-emerald-500">
           <p className="text-sm font-medium text-slate-500">Total Spent</p>
           <h3 className="text-2xl font-bold text-slate-900 mt-1">
-            {formatCurrency(budgets.reduce((acc, b) => acc + b.spent, 0))}
+            {formatCurrency(budgets.reduce((acc, b) => acc + b.spent, 0), user?.currency || 'USD')}
           </h3>
         </div>
         <div className="glass-card p-6 border-l-4 border-amber-500">
           <p className="text-sm font-medium text-slate-500">Remaining</p>
           <h3 className="text-2xl font-bold text-slate-900 mt-1">
-            {formatCurrency(budgets.reduce((acc, b) => acc + (b.limit - b.spent), 0))}
+            {formatCurrency(budgets.reduce((acc, b) => acc + (b.limit - b.spent), 0), user?.currency || 'USD')}
           </h3>
         </div>
       </div>
@@ -210,11 +223,11 @@ const Budgets = () => {
                 <div className="flex justify-between items-end pt-2">
                   <div>
                     <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Spent</p>
-                    <p className="text-lg font-bold text-slate-900">{formatCurrency(budget.spent)}</p>
+                    <p className="text-lg font-bold text-slate-900">{formatCurrency(budget.spent, user?.currency || 'USD')}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Limit</p>
-                    <p className="text-lg font-bold text-slate-900">{formatCurrency(budget.limit)}</p>
+                    <p className="text-lg font-bold text-slate-900">{formatCurrency(budget.limit, user?.currency || 'USD')}</p>
                   </div>
                 </div>
 
@@ -302,9 +315,10 @@ const Budgets = () => {
                   </button>
                   <button 
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all disabled:opacity-50"
                   >
-                    {editingBudget ? 'Update' : 'Create'}
+                    {isSubmitting ? 'Saving...' : (editingBudget ? 'Update' : 'Create')}
                   </button>
                 </div>
               </form>
@@ -314,16 +328,51 @@ const Budgets = () => {
       </AnimatePresence>
 
       {/* Insights Section */}
-      <div className="glass-card p-8 bg-brand-600 text-white overflow-hidden relative">
-        <div className="relative z-10 max-w-lg">
-          <h3 className="text-2xl font-bold mb-2">Smart Budgeting Insights</h3>
-          <p className="text-brand-100 mb-6">Based on your spending habits, we recommend increasing your 'Food' budget by $50 to avoid overspending next month.</p>
-          <button className="bg-white text-brand-600 px-6 py-2 rounded-xl font-bold hover:bg-brand-50 transition-colors">
-            Apply Suggestion
-          </button>
+      {budgets.length > 0 && (
+        <div className="glass-card p-8 bg-brand-600 text-white overflow-hidden relative">
+          <div className="relative z-10 max-w-lg">
+            <h3 className="text-2xl font-bold mb-2">Smart Budgeting Insights</h3>
+            {(() => {
+              const overBudgets = budgets.filter(b => b.spent > b.limit);
+              const nearBudgets = budgets.filter(b => b.spent > b.limit * 0.85 && b.spent <= b.limit);
+              
+              if (overBudgets.length > 0) {
+                const b = overBudgets[0];
+                const suggestion = Math.ceil((b.spent - b.limit + 50) / 10) * 10;
+                return (
+                  <>
+                    <p className="text-brand-100 mb-6">
+                      You've exceeded your <span className="font-bold capitalize">{b.category}</span> budget by {formatCurrency(b.spent - b.limit, user?.currency || 'USD')}. 
+                      We recommend increasing it by <span className="font-bold">{formatCurrency(suggestion, user?.currency || 'USD')}</span> to stay on track next month.
+                    </p>
+                    <button 
+                      onClick={() => updateBudget(b.id, { limit: b.limit + suggestion })}
+                      className="bg-white text-brand-600 px-6 py-2 rounded-xl font-bold hover:bg-brand-50 transition-colors"
+                    >
+                      Apply Suggestion
+                    </button>
+                  </>
+                );
+              } else if (nearBudgets.length > 0) {
+                const b = nearBudgets[0];
+                return (
+                  <p className="text-brand-100 mb-6">
+                    You're doing great! You're nearing your <span className="font-bold capitalize">{b.category}</span> limit, but still within budget. 
+                    Keep an eye on your spending for the rest of the month.
+                  </p>
+                );
+              } else {
+                return (
+                  <p className="text-brand-100 mb-6">
+                    Excellent work! All your budgets are well-managed this month. You're on track to save more than projected.
+                  </p>
+                );
+              }
+            })()}
+          </div>
+          <TrendingUp className="absolute right-[-20px] bottom-[-20px] text-brand-500/20 w-64 h-64 -rotate-12" />
         </div>
-        <TrendingUp className="absolute right-[-20px] bottom-[-20px] text-brand-500/20 w-64 h-64 -rotate-12" />
-      </div>
+      )}
     </div>
   );
 };

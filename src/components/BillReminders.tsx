@@ -7,8 +7,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Category, Bill } from '../types';
 
 const BillReminders = () => {
-  const { bills, toggleBillPaid, addBill } = useApp();
+  const { bills, toggleBillPaid, addBill, user } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newBill, setNewBill] = useState<Omit<Bill, 'id' | 'isPaid'>>({
     name: '',
     amount: 0,
@@ -20,16 +21,21 @@ const BillReminders = () => {
     parseISO(a.dueDate).getTime() - parseISO(b.dueDate).getTime()
   );
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    addBill({ ...newBill, isPaid: false });
-    setIsModalOpen(false);
-    setNewBill({
-      name: '',
-      amount: 0,
-      dueDate: new Date().toISOString().split('T')[0],
-      category: 'utilities'
-    });
+    setIsSubmitting(true);
+    try {
+      await addBill({ ...newBill, isPaid: false });
+      setIsModalOpen(false);
+      setNewBill({
+        name: '',
+        amount: 0,
+        dueDate: new Date().toISOString().split('T')[0],
+        category: 'utilities'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const categories: Category[] = [
@@ -95,7 +101,7 @@ const BillReminders = () => {
                 </div>
                 
                 <div className="flex items-center gap-4">
-                  <span className="text-sm font-bold text-slate-900">{formatCurrency(bill.amount)}</span>
+                  <span className="text-sm font-bold text-slate-900">{formatCurrency(bill.amount, user?.currency || 'USD')}</span>
                   <button 
                     onClick={() => toggleBillPaid(bill.id)}
                     className={cn(
@@ -153,7 +159,7 @@ const BillReminders = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Amount (GHS)</label>
+                      <label className="text-sm font-bold text-slate-700">Amount ({user?.currency || 'GHS'})</label>
                       <input 
                         required
                         type="number" 
@@ -190,8 +196,12 @@ const BillReminders = () => {
                     </select>
                   </div>
 
-                  <button type="submit" className="btn-primary w-full py-4 text-lg mt-4">
-                    Add Bill
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="btn-primary w-full py-4 text-lg mt-4 disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Adding...' : 'Add Bill'}
                   </button>
                 </form>
               </div>

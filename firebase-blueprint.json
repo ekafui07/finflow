@@ -73,6 +73,20 @@
         "alertId": { "type": "string" }
       },
       "required": ["alertId"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "An app notification",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["bill", "budget", "goal", "system", "insight"] },
+        "date": { "type": "string", "format": "date-time" },
+        "isRead": { "type": "boolean" },
+        "link": { "type": "string" }
+      },
+      "required": ["title", "message", "type", "date", "isRead"]
     }
   },
   "firestore": {
@@ -99,6 +113,10 @@
     "/users/{userId}/alerts/{alertId}": {
       "schema": "Alert",
       "description": "User dismissed alerts collection"
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications collection"
     }
   }
 }
