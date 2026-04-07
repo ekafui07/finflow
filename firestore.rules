@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profile validation
+    function isValidProfile(data) {
+      return data.keys().hasAll(['name', 'email']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.email is string;
+    }
+
+    // Transaction validation
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['description', 'amount', 'date', 'category', 'type']) &&
+             data.description is string &&
+             data.amount is number &&
+             data.date is string &&
+             data.category is string &&
+             data.type in ['income', 'expense'];
+    }
+
+    // Budget validation
+    function isValidBudget(data) {
+      return data.keys().hasAll(['category', 'limit', 'spent']) &&
+             data.category is string &&
+             data.limit is number &&
+             data.spent is number;
+    }
+
+    // Goal validation
+    function isValidGoal(data) {
+      return data.keys().hasAll(['name', 'targetAmount', 'currentAmount', 'deadline']) &&
+             data.name is string &&
+             data.targetAmount is number &&
+             data.currentAmount is number &&
+             data.deadline is string;
+    }
+
+    // Bill validation
+    function isValidBill(data) {
+      return data.keys().hasAll(['name', 'amount', 'dueDate', 'category', 'isPaid']) &&
+             data.name is string &&
+             data.amount is number &&
+             data.dueDate is string &&
+             data.category is string &&
+             data.isPaid is bool;
+    }
+
+    // Match users collection
+    match /users/{userId} {
+      
+      // Profile document
+      match /profile {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidProfile(request.resource.data);
+      }
+
+      // Transactions subcollection
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidTransaction(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // Budgets subcollection
+      match /budgets/{budgetId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidBudget(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // Goals subcollection
+      match /goals/{goalId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidGoal(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // Bills subcollection
+      match /bills/{billId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidBill(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // Alerts subcollection
+      match /alerts/{alertId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

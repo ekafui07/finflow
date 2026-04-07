@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "currency": { "type": "string" },
+        "theme": { "type": "string", "enum": ["light", "dark"] },
+        "onboardingComplete": { "type": "boolean" },
+        "incomeFrequency": { "type": "string" },
+        "monthlyIncome": { "type": "number" },
+        "financialGoals": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "email"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction",
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date" },
+        "category": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] }
+      },
+      "required": ["description", "amount", "date", "category", "type"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "A monthly budget for a category",
+      "type": "object",
+      "properties": {
+        "category": { "type": "string" },
+        "limit": { "type": "number" },
+        "spent": { "type": "number" }
+      },
+      "required": ["category", "limit", "spent"]
+    },
+    "SavingsGoal": {
+      "title": "Savings Goal",
+      "description": "A goal for saving money",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "deadline": { "type": "string", "format": "date" }
+      },
+      "required": ["name", "targetAmount", "currentAmount", "deadline"]
+    },
+    "Bill": {
+      "title": "Bill",
+      "description": "A recurring bill",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "amount": { "type": "number" },
+        "dueDate": { "type": "string", "format": "date" },
+        "category": { "type": "string" },
+        "isPaid": { "type": "boolean" }
+      },
+      "required": ["name", "amount", "dueDate", "category", "isPaid"]
+    },
+    "Alert": {
+      "title": "Alert",
+      "description": "A dismissed alert",
+      "type": "object",
+      "properties": {
+        "alertId": { "type": "string" }
+      },
+      "required": ["alertId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/profile": {
+      "schema": "UserProfile",
+      "description": "User profile document"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User transactions collection"
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "User budgets collection"
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": "SavingsGoal",
+      "description": "User savings goals collection"
+    },
+    "/users/{userId}/bills/{billId}": {
+      "schema": "Bill",
+      "description": "User bills collection"
+    },
+    "/users/{userId}/alerts/{alertId}": {
+      "schema": "Alert",
+      "description": "User dismissed alerts collection"
+    }
+  }
+}
