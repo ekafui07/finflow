@@ -30,10 +30,11 @@ service cloud.firestore {
 
     // Budget validation
     function isValidBudget(data) {
-      return data.keys().hasAll(['category', 'limit', 'spent']) &&
+      return data.keys().hasAll(['category', 'limit', 'spent', 'period']) &&
              data.category is string &&
              data.limit is number &&
-             data.spent is number;
+             data.spent is number &&
+             data.period == 'monthly';
     }
 
     // Goal validation

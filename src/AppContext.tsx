@@ -518,7 +518,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       template.forEach(b => {
         const newDoc = doc(collection(db, 'users', userId, 'budgets'));
-        batch.set(newDoc, b);
+        batch.set(newDoc, { ...b, spent: 0, period: 'monthly' });
       });
       
       batch.update(doc(db, 'users', userId, 'profile', 'data'), { onboardingComplete: true });
