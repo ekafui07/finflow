@@ -32,7 +32,7 @@ const Sidebar = () => {
   ];
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white transition-colors duration-300">
+    <div className="flex flex-col h-full bg-white">
       <div className="p-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-200">
@@ -88,17 +88,17 @@ const Sidebar = () => {
   return (
     <>
       {/* Mobile Toggle */}
-      <div className="lg:hidden fixed top-5 left-4 z-[60]">
+      <div className="lg:hidden fixed top-0 left-0 h-16 flex items-center pl-4 z-[60]">
         <button 
           onClick={() => setIsOpen(true)}
-          className="p-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-600 hover:bg-slate-50 transition-colors"
+          className="p-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-600 active:scale-95 transition-transform"
         >
-          <Menu size={24} />
+          <Menu size={22} />
         </button>
       </div>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 h-screen sticky top-0 flex-col transition-colors duration-300">
+      <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 h-screen sticky top-0 flex-col">
         <SidebarContent />
       </aside>
 
@@ -110,14 +110,15 @@ const Sidebar = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] lg:hidden"
+              className="fixed inset-0 bg-slate-900/40 z-[60] lg:hidden"
             />
             <motion.aside
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              transition={{ type: 'tween', duration: 0.2, ease: 'easeOut' }}
               className="fixed inset-y-0 left-0 w-72 bg-white z-[70] lg:hidden shadow-2xl"
             >
               <SidebarContent />

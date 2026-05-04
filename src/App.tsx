@@ -23,7 +23,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const formattedTitle = pageTitle.charAt(0).toUpperCase() + pageTitle.slice(1);
 
   return (
-    <div className="flex min-h-screen bg-slate-50 transition-colors duration-300">
+    <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header title={formattedTitle} />
@@ -31,10 +31,10 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
             >
             <Suspense fallback={
               <div className="flex-1 flex items-center justify-center min-h-[50vh]">

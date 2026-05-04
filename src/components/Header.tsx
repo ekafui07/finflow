@@ -167,9 +167,10 @@ const Header: React.FC<HeaderProps> = ({ title, onAddClick }) => {
           <AnimatePresence>
             {isSearchOpen && (searchQuery.length > 0 || searchResults.length > 0) && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.12 }}
                 className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
               >
                 <div className="p-2 max-h-[400px] overflow-y-auto custom-scrollbar">
@@ -236,9 +237,10 @@ const Header: React.FC<HeaderProps> = ({ title, onAddClick }) => {
             <AnimatePresence>
               {isNotificationsOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  initial={{ opacity: 0, y: 6, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                  transition={{ duration: 0.12 }}
                   className="absolute top-full right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
                 >
                   <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
