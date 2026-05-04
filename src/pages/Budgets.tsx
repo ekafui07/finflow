@@ -113,13 +113,13 @@ const Budgets = () => {
   ];
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Budgets</h2>
           <p className="text-slate-500">Plan your spending and stay on track.</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="btn-primary">
+        <button onClick={() => setIsModalOpen(true)} className="btn-primary w-full sm:w-auto">
           <Plus size={18} />
           Create Budget
         </button>

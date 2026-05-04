@@ -22,8 +22,8 @@ const Settings = () => {
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-4xl mx-auto">
-      <div className="flex justify-between items-start">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Settings</h2>
           <p className="text-slate-500">Manage your account preferences and application settings.</p>

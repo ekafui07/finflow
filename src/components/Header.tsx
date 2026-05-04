@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Search, Plus, X, ArrowRight, Wallet, Target, Calendar, BookOpen } from 'lucide-react';
+import { Bell, Search, Plus, X, ArrowRight, Wallet, Target, Calendar, BookOpen, Trash2 } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { ARTICLES } from '../config/articles.config';
 import { SearchResult, AppNotification } from '../types';
@@ -14,11 +14,12 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ title, onAddClick }) => {
-  const { transactions, budgets, goals, bills, user, notifications, markNotificationAsRead } = useApp();
+  const { transactions, budgets, goals, bills, user, notifications, markNotificationAsRead, deleteNotification, clearAllNotifications } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -134,13 +135,21 @@ const Header: React.FC<HeaderProps> = ({ title, onAddClick }) => {
   };
 
   return (
-    <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 px-6 lg:px-8 flex items-center justify-between">
-      <div className="flex items-center gap-4">
+    <>
+    <header className="h-16 md:h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 px-4 md:px-6 lg:px-8 flex items-center justify-between">
+      <div className="flex items-center gap-3 md:gap-4">
         <div className="w-10 lg:hidden" />
-        <h1 className="text-xl lg:text-2xl font-bold text-slate-900 truncate">{title}</h1>
+        <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 truncate">{title}</h1>
       </div>
       
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3 md:gap-6">
+        {/* Mobile Search Toggle */}
+        <button 
+          onClick={() => setIsMobileSearchOpen(true)}
+          className="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
+        >
+          <Search size={20} />
+        </button>
         <div className="relative hidden md:block" ref={searchRef}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input 
@@ -234,11 +243,24 @@ const Header: React.FC<HeaderProps> = ({ title, onAddClick }) => {
                 >
                   <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <h3 className="font-bold text-slate-900">Notifications</h3>
-                    {unreadCount > 0 && (
-                      <span className="px-2 py-0.5 bg-brand-100 text-brand-600 rounded-full text-[10px] font-bold">
-                        {unreadCount} New
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <span className="px-2 py-0.5 bg-brand-100 text-brand-600 rounded-full text-[10px] font-bold">
+                          {unreadCount} New
+                        </span>
+                      )}
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearAllNotifications();
+                          }}
+                          className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition-colors"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                     {notifications.length > 0 ? (
@@ -278,6 +300,16 @@ const Header: React.FC<HeaderProps> = ({ title, onAddClick }) => {
                             {!n.isRead && (
                               <div className="w-2 h-2 bg-brand-500 rounded-full mt-1.5 shrink-0" />
                             )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteNotification(n.id);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 transition-all shrink-0"
+                              title="Delete notification"
+                            >
+                              <X size={14} />
+                            </button>
                           </div>
                         </div>
                       ))
@@ -307,6 +339,97 @@ const Header: React.FC<HeaderProps> = ({ title, onAddClick }) => {
         </div>
       </div>
     </header>
+
+    {/* Mobile Search Overlay */}
+    <AnimatePresence>
+      {isMobileSearchOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[80] bg-white md:hidden"
+        >
+          <div className="p-4 space-y-4">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => {
+                  setIsMobileSearchOpen(false);
+                  setSearchQuery('');
+                  setSearchResults([]);
+                }}
+                className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                <X size={24} />
+              </button>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setIsSearchOpen(true);
+                  }}
+                  autoFocus
+                  placeholder="Search records, goals, guides..." 
+                  className="w-full pl-10 pr-4 py-3 bg-slate-100 border-transparent focus:bg-white focus:border-brand-300 focus:ring-4 focus:ring-brand-50 rounded-xl transition-all text-sm outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="max-h-[calc(100vh-100px)] overflow-y-auto">
+              {searchResults.length > 0 ? (
+                <div className="space-y-1">
+                  {searchResults.map((result) => (
+                    <button
+                      key={`${result.type}-${result.id}`}
+                      onClick={() => {
+                        handleResultClick(result.link);
+                        setIsMobileSearchOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center">
+                        {getIcon(result.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate">{result.title}</p>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{result.subtitle}</p>
+                      </div>
+                      {result.amount && (
+                        <span className="text-sm font-bold text-slate-900">
+                          {formatCurrency(result.amount, user?.currency || 'GHS')}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : searchQuery.length >= 2 ? (
+                <div className="p-8 text-center">
+                  <p className="text-sm text-slate-500">No results found for "{searchQuery}"</p>
+                </div>
+              ) : searchQuery.length === 0 ? (
+                <div className="p-4">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Quick Search</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Food', 'Rent', 'Savings', 'Bills'].map(tag => (
+                      <button 
+                        key={tag}
+                        onClick={() => setSearchQuery(tag)}
+                        className="px-3 py-2.5 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 rounded-lg text-sm font-medium text-slate-600 transition-colors text-left"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   );
 };
 

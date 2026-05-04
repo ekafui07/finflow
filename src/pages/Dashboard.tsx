@@ -195,12 +195,12 @@ const Dashboard = () => {
   const formatWithUserCurrency = (val: number) => formatCurrency(val, user?.currency || 'USD');
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-7xl mx-auto">
       <BudgetTemplatesModal />
       {/* Welcome Section */}
       <section className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900">Welcome back, {user?.name}!</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900">Welcome back, {user?.name}!</h2>
           <p className="text-slate-500 mt-1">Here's what's happening with your finances today.</p>
         </div>
         

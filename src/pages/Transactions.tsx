@@ -87,7 +87,7 @@ const Transactions = () => {
   };
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Transactions</h2>
@@ -132,24 +132,24 @@ const Transactions = () => {
             <option value="expense">Expense</option>
           </select>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <input 
               type="date" 
               value={dateRange.start}
               onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm"
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm flex-1 min-w-0"
             />
-            <span className="text-slate-400 text-sm">to</span>
+            <span className="text-slate-400 text-sm text-center">to</span>
             <input 
               type="date" 
               value={dateRange.end}
               onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm"
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm flex-1 min-w-0"
             />
             {(dateRange.start || dateRange.end) && (
               <button 
                 onClick={() => setDateRange({ start: '', end: '' })}
-                className="p-2 text-slate-400 hover:text-rose-500"
+                className="p-2 text-slate-400 hover:text-rose-500 self-center"
               >
                 <X size={16} />
               </button>
@@ -175,8 +175,54 @@ const Transactions = () => {
         </div>
       </div>
 
-      {/* Transactions Table */}
-      <div className="glass-card overflow-hidden">
+      {/* Transactions - Mobile Cards */}
+      <div className="md:hidden space-y-3">
+        {filteredTransactions.length > 0 ? (
+          filteredTransactions.map((t) => (
+            <div key={t.id} className="glass-card p-4 group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                    t.type === 'income' ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-600"
+                  )}>
+                    {t.type === 'income' ? <ArrowUpCircle size={20} /> : <ArrowDownCircle size={20} />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate">{t.description}</p>
+                    <p className="text-xs text-slate-500">{t.date} • <span className="capitalize">{t.category}</span></p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={cn(
+                    "text-sm font-bold",
+                    t.type === 'income' ? "text-emerald-600" : "text-slate-900"
+                  )}>
+                    {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount, user?.currency || 'USD')}
+                  </span>
+                  <button 
+                    onClick={() => deleteTransaction(t.id)}
+                    className="p-1.5 text-slate-300 hover:text-rose-600 rounded-lg transition-all"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="glass-card p-12 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+              <Search size={32} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">No transactions found</h3>
+            <p className="text-slate-500">Try adjusting your filters or search term.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Transactions - Desktop Table */}
+      <div className="glass-card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

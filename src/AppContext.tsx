@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Transaction, Budget, SavingsGoal, UserProfile, Bill, AppNotification } from './types';
 import { auth, db } from './config/firebase';
-import { isAfter, parseISO, addDays, isBefore, isSameMonth } from 'date-fns';
+import { isAfter, parseISO, addDays, isBefore, isSameMonth, format } from 'date-fns';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
@@ -53,6 +53,8 @@ interface AppContextType {
   dismissAlert: (id: string) => Promise<void>;
   updateProfile: (updated: Partial<UserProfile>) => Promise<void>;
   markNotificationAsRead: (id: string) => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -68,6 +70,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const notificationCooldownRef = React.useRef(false);
 
   const handleFirestoreError = useCallback((error: any, operation: string, path: string) => {
     const errInfo = {
@@ -190,12 +193,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [firebaseUser, handleFirestoreError]);
 
-  // Smart Notification Generator
+  // Smart Notification Generator (with throttle & month-scoped dedup)
   useEffect(() => {
     if (!firebaseUser || isLoading) return;
+    if (notificationCooldownRef.current) return;
     const userId = firebaseUser.uid;
 
+    const currentMonth = format(new Date(), 'yyyy-MM');
+
     const generateNotifications = async () => {
+      notificationCooldownRef.current = true;
       const newNotifications: Omit<AppNotification, 'id'>[] = [];
 
       // 1. Bill Reminders (Due within 3 days)
@@ -204,7 +211,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const dueDate = parseISO(bill.dueDate);
           const threeDaysFromNow = addDays(new Date(), 3);
           if (isBefore(dueDate, threeDaysFromNow)) {
-            const exists = notifications.some(n => n.type === 'bill' && n.message.includes(bill.name));
+            const exists = notifications.some(n => 
+              n.type === 'bill' && n.message.includes(bill.name) && n.date.startsWith(currentMonth)
+            );
             if (!exists) {
               newNotifications.push({
                 title: 'Bill Reminder',
@@ -223,7 +232,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       budgets.forEach(budget => {
         const percent = (budget.spent / budget.limit) * 100;
         if (percent >= 80) {
-          const exists = notifications.some(n => n.type === 'budget' && n.message.includes(budget.category));
+          const exists = notifications.some(n => 
+            n.type === 'budget' && n.message.includes(budget.category) && n.date.startsWith(currentMonth)
+          );
           if (!exists) {
             newNotifications.push({
               title: 'Budget Alert',
@@ -241,7 +252,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       goals.forEach(goal => {
         const percent = (goal.currentAmount / goal.targetAmount) * 100;
         if (percent >= 50) {
-          const exists = notifications.some(n => n.type === 'goal' && n.message.includes(goal.name));
+          const exists = notifications.some(n => 
+            n.type === 'goal' && n.message.includes(goal.name) && n.date.startsWith(currentMonth)
+          );
           if (!exists) {
             newNotifications.push({
               title: 'Goal Milestone!',
@@ -249,7 +262,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               type: 'goal',
               date: new Date().toISOString(),
               isRead: false,
-              link: '/budgets'
+              link: '/goals'
             });
           }
         }
@@ -263,6 +276,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         await batch.commit();
       }
+
+      // Cooldown: wait 30 seconds before allowing another generation cycle
+      setTimeout(() => { notificationCooldownRef.current = false; }, 30000);
     };
 
     generateNotifications();
@@ -274,6 +290,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await updateDoc(doc(db, 'users', firebaseUser.uid, 'notifications', id), { isRead: true });
     } catch (error) {
       handleFirestoreError(error, 'update', `users/${firebaseUser.uid}/notifications/${id}`);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    if (!firebaseUser) return;
+    try {
+      await deleteDoc(doc(db, 'users', firebaseUser.uid, 'notifications', id));
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${firebaseUser.uid}/notifications/${id}`);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    if (!firebaseUser) return;
+    try {
+      const batch = writeBatch(db);
+      notifications.forEach(n => {
+        batch.delete(doc(db, 'users', firebaseUser.uid, 'notifications', n.id));
+      });
+      await batch.commit();
+      toast.success('All notifications cleared');
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${firebaseUser.uid}/notifications`);
     }
   };
 
@@ -554,7 +593,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       login, signup, logout, addTransaction, deleteTransaction, updateTransaction,
       addBudget, deleteBudget, updateBudget, addGoal, updateGoal, deleteGoal,
       addBill, toggleBillPaid, applyBudgetTemplate, completeOnboarding, dismissAlert,
-      updateProfile, markNotificationAsRead
+      updateProfile, markNotificationAsRead, deleteNotification, clearAllNotifications
     }}>
       {children}
     </AppContext.Provider>
