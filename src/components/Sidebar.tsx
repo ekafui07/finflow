@@ -88,10 +88,10 @@ const Sidebar = () => {
   return (
     <>
       {/* Mobile Toggle */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-5 left-4 z-[60]">
         <button 
           onClick={() => setIsOpen(true)}
-          className="p-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-600"
+          className="p-2 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-600 hover:bg-slate-50 transition-colors"
         >
           <Menu size={24} />
         </button>

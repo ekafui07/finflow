@@ -72,49 +72,42 @@ service cloud.firestore {
       // Profile subcollection
       match /profile/{docId} {
         allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && isValidProfile(request.resource.data);
+        allow create, update: if isOwner(userId) && isValidProfile(request.resource.data);
       }
 
       // Transactions subcollection
       match /transactions/{transactionId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && isValidTransaction(request.resource.data);
-        allow delete: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidTransaction(request.resource.data);
       }
 
       // Budgets subcollection
       match /budgets/{budgetId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && isValidBudget(request.resource.data);
-        allow delete: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidBudget(request.resource.data);
       }
 
       // Goals subcollection
       match /goals/{goalId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && isValidGoal(request.resource.data);
-        allow delete: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidGoal(request.resource.data);
       }
 
       // Bills subcollection
       match /bills/{billId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && isValidBill(request.resource.data);
-        allow delete: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidBill(request.resource.data);
       }
 
       // Alerts subcollection
       match /alerts/{alertId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
-        allow delete: if isOwner(userId);
+        allow read, write: if isOwner(userId);
       }
 
       // Notifications subcollection
       match /notifications/{notificationId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && isValidNotification(request.resource.data);
-        allow delete: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidNotification(request.resource.data);
       }
     }
   }

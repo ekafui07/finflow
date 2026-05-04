@@ -3,15 +3,18 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AppProvider, useApp } from './AppContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import Dashboard from './pages/Dashboard';
-import Transactions from './pages/Transactions';
-import Budgets from './pages/Budgets';
-import Goals from './pages/Goals';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
-import Learning from './pages/Learning';
-import Auth from './pages/Auth';
-import Landing from './pages/Landing';
+import { lazy, Suspense } from 'react';
+import { Toaster } from 'react-hot-toast';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Transactions = lazy(() => import('./pages/Transactions'));
+const Budgets = lazy(() => import('./pages/Budgets'));
+const Goals = lazy(() => import('./pages/Goals'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Learning = lazy(() => import('./pages/Learning'));
+const Auth = lazy(() => import('./pages/Auth'));
+const Landing = lazy(() => import('./pages/Landing'));
 import { motion, AnimatePresence } from 'motion/react';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -33,12 +36,18 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
+            <Suspense fallback={
+              <div className="flex-1 flex items-center justify-center min-h-[50vh]">
+                <div className="w-8 h-8 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+              </div>
+            }>
               {children}
-            </motion.div>
-          </AnimatePresence>
-        </main>
-      </div>
+            </Suspense>
+          </motion.div>
+        </AnimatePresence>
+      </main>
     </div>
+  </div>
   );
 };
 
@@ -80,8 +89,6 @@ const AppRoutes = () => {
     </Routes>
   );
 };
-
-import { Toaster } from 'react-hot-toast';
 
 export default function App() {
   return (
