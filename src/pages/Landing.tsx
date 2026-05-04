@@ -14,12 +14,8 @@ const Landing = () => {
           </div>
           <span className="text-2xl font-bold tracking-tight text-slate-900">UniWallet</span>
         </div>
-        <div className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-sm font-semibold text-slate-600 hover:text-brand-600 transition-colors">Features</a>
-        </div>
         <div className="flex items-center gap-4">
           <Link to="/auth" className="text-sm font-bold text-slate-600 hover:text-slate-900">Log in</Link>
-          <Link to="/auth" className="btn-primary px-6">Get Started</Link>
         </div>
       </nav>
 
