@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Transaction, Budget, SavingsGoal, UserProfile, Bill, AppNotification } from './types';
 import { auth, db } from './config/firebase';
 import { isAfter, parseISO, addDays, isBefore, isSameMonth, format } from 'date-fns';
@@ -7,6 +7,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut,
+  setPersistence,
+  browserSessionPersistence,
   User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -71,6 +73,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoading, setIsLoading] = useState(true);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const notificationCooldownRef = React.useRef(false);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const INACTIVITY_TIMEOUT_MS = 40 * 60 * 1000; // 40 minutes
 
   const handleFirestoreError = useCallback((error: any, operation: string, path: string) => {
     const errInfo = {
@@ -101,6 +105,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   useEffect(() => {
+    // Set session persistence so auth state clears when the browser is closed
+    setPersistence(auth, browserSessionPersistence).catch((error) => {
+      console.error('Failed to set session persistence:', error);
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
       setFirebaseUser(u);
       if (!u) {
@@ -118,6 +127,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return () => unsubscribeAuth();
   }, []);
+
+  // Inactivity auto-logout: signs out after 40 minutes of no user activity
+  useEffect(() => {
+    if (!firebaseUser) return;
+
+    const resetTimer = () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+      inactivityTimerRef.current = setTimeout(async () => {
+        await signOut(auth);
+        toast('Session expired due to inactivity. Please log in again.', { icon: '🔒' });
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    activityEvents.forEach((event) => document.addEventListener(event, resetTimer));
+
+    // Start the timer immediately
+    resetTimer();
+
+    return () => {
+      activityEvents.forEach((event) => document.removeEventListener(event, resetTimer));
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, [firebaseUser]);
 
   useEffect(() => {
     if (!firebaseUser) return;
